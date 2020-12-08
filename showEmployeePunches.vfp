@@ -1,0 +1,138 @@
+<apex:page docType="html-5.0" Controller="EmployeePunchesController" title="Show employee punches">
+    <div>
+        <input type="hidden" name="my_shifts" id="my_shifts" value="{!employeeShifts}" />
+        <div id="shift_content"></div>
+    </div>
+    <style>
+        body, input[type="button"] { font-size: 12pt; }
+        label:hover { cursor: text; }
+        input[type="button"] { background: #FF4500; color: white; padding: 4px 3px; font-weight: bold; border: 2px solid; border-color: #FF4500; border-radius: 3px; }
+        input[type="button"]:hover, input[type="button"]:focus { background: orange; color: white; padding: 4px 3px; font-weight: bold; border: 2px solid; border-color: orange; border-radius: 3px; cursor: pointer; }
+        input[type="button"]:disabled { cursor: not-allowed; padding: 4px 3px; font-weight: bold; border-radius: 3px; }
+    </style>
+    <script>
+    	var shift_content = "";
+    	var each_shift;
+    	var my_shifts = "";
+    	var punch_count = 0;
+    	var clocked_in_shift_weekday = "";
+    	var clocked_in_shift_date = "";
+    	var clocked_in_shift_start_time = "";
+    	var clocked_in_shift_end_time = "";
+    
+    	my_shifts = document.getElementById("my_shifts").value;
+    
+    	each_shift = JSON.parse(my_shifts);
+    
+    	if (each_shift["punch"][each_shift["punch"].length - 1]["punch_type"] == "Clock in") {
+            
+            //Search for the current shift.  That shift has not been finished.
+            for (var i = 0; i < each_shift["shift"].length; i++) {
+                
+                if (each_shift["shift"][i]["row_id"] == each_shift["punch"][each_shift["punch"].length - 1]["employee_weekly_schedule"]) {
+                    
+                    clocked_in_shift_weekday = each_shift["shift"][i]["weekday"];
+                    clocked_in_shift_date = each_shift["shift"][i]["schedule_date"];
+                    clocked_in_shift_start_time = each_shift["shift"][i]["start_time"];
+                    clocked_in_shift_end_time = each_shift["shift"][i]["end_time"];
+                }
+            }
+            
+            //This if/else block validates whether an employee's current shift is still from the same scheduled date.
+            if (clocked_in_shift_weekday != "" && clocked_in_shift_date != "" && clocked_in_shift_start_time != "" && clocked_in_shift_end_time != "") {
+                
+                shift_content += "<div><br />";
+                shift_content += "<label>Today's shift:</label>";
+                shift_content += "</div>";
+                shift_content += "<div>";
+                shift_content += "<label><b>" + clocked_in_shift_weekday + ", " + clocked_in_shift_date + "</b></label>";
+                shift_content += "</div>";
+                shift_content += "<div>";
+                shift_content += "<label>" + clocked_in_shift_start_time + " - " + clocked_in_shift_end_time + "</label>";
+                shift_content += "</div>";
+            } else {
+                
+                shift_content += "<div><br />";
+                shift_content += "<label>You are not scheduled for any shifts today.  Finish the current shift.</label>";
+                shift_content += "</div>";
+            }
+            
+            shift_content += "<div>";
+            shift_content += "<br /><input type='button' class='submit_employee_punch' onclick='add_employee_punch(\"" + each_shift["punch"][each_shift["punch"].length - 1]["employee_weekly_schedule"] + "\", \"Clock out\")' value='Clock out' /><br /><br />";
+            shift_content += "</div>";            
+            
+            //Show punches for each shift.
+            for (var i = 0; i < each_shift["punch"].length; i++) {
+                
+                //Associate each punch with employee shift.
+                if (each_shift["punch"][each_shift["punch"].length - 1]["employee_weekly_schedule"] == each_shift["punch"][i]["employee_weekly_schedule"]) {
+                    
+                    shift_content += "<div>";
+                    shift_content += "<label>" + each_shift["punch"][i]["punch_type"] + " on " + each_shift["punch"][i]["punch_date"] + " at " + each_shift["punch"][i]["punch_time"] + "</label>";
+                    shift_content += "</div>";
+                }
+            }
+        } else {
+            
+            if (each_shift["shift"][0]["weekday"] != "no shift" && each_shift["shift"][0]["weekday"] != "error") {
+                
+                //Show shifts for today's date.
+                for (var i = 0; i < each_shift["shift"].length; i++) {
+                    
+                    shift_content += "<div><br />";
+                    shift_content += "<label><b>" + each_shift["shift"][i]["weekday"] + ", " + each_shift["shift"][i]["schedule_date"] + "</b></label>";
+                    shift_content += "</div>";
+                    shift_content += "<div>";
+                    shift_content += "<label>" + each_shift["shift"][i]["start_time"] + " - " + each_shift["shift"][i]["end_time"] + "</label>";
+                    shift_content += "</div>";
+                    shift_content += "<div>";
+                    shift_content += "<div>";
+                    shift_content += "<br /><input type='button' class='submit_employee_punch' onclick='add_employee_punch(\"" + each_shift["shift"][i]["row_id"] + "\", \"Clock in\")' value='Clock in' /><br /><br />";
+                    shift_content += "</div>";
+                    
+                    //Show punches for each shift.
+                    for (var j = 0; j < each_shift["punch"].length; j++) {
+                        
+                        //Associate each punch with employee shift.
+                        if (each_shift["shift"][i]["row_id"] == each_shift["punch"][j]["employee_weekly_schedule"]) {
+                            
+                            shift_content += "<div>";
+                            shift_content += "<label>" + each_shift["punch"][j]["punch_type"] + " on " + each_shift["punch"][j]["punch_date"] + " at " + each_shift["punch"][j]["punch_time"] + "</label>";
+                            shift_content += "</div>";
+                            
+                            punch_count++;
+                        }
+                    }
+                    
+                    if (punch_count == 0) {
+                        
+                        shift_content += "<label>You have no punches for this shift.</label>";
+                    }
+                    
+                    shift_content += "</div>";
+                    
+                    punch_count = 0;
+                }
+            } else {
+                
+                shift_content += "<div>";
+                shift_content += "<label>You are not scheduled for any shifts today.</label>";
+                shift_content += "</div>";
+            }            
+        }
+    
+        document.getElementById("shift_content").innerHTML = shift_content;
+    
+        function add_employee_punch(employee_shift_id, employee_punch_type) {
+			
+            addEmployeePunch(employee_shift_id, employee_punch_type);
+        }
+    </script>
+    <apex:form >
+        <apex:actionFunction name="addEmployeePunch" action="{!controlCreateEmployeePunch}" reRender="formFeedback">
+            <apex:param id="employeeShiftId" name="employeeShiftId" value="" />
+            <apex:param id="employeePunchType" name="employeePunchType" value="" />
+        </apex:actionFunction>
+        <apex:outputText id="formFeedback" value="{!formFeedback}" escape="false"></apex:outputText>
+    </apex:form>
+</apex:page>
