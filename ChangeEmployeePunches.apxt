@@ -1,0 +1,12 @@
+trigger ChangeEmployeePunches on EmployeePunch__c (before insert) {
+
+    if (Trigger.isBefore) {
+        
+        //Make sure that the submitted punch correctly represents the current date and time (actual hour and minute)
+        //during the actual punch submission.  This way, the employee is unable to lie about an incorrect punch.
+        if (Trigger.isInsert) {
+            
+            EmployeePunchesController.triggerValidateEmployeePunch(Trigger.new);
+        }
+    }
+}
