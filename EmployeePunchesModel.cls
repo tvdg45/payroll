@@ -5,6 +5,8 @@ public abstract class EmployeePunchesModel {
     private static Date employeeShiftDate;
     private static Time employeeShiftTime;
     private static String employeePunchType;
+    private static Date startingDateOfWeek;
+    private static Date endingDateOfWeek;
     
     //Mutators
     public static void setEmployeeShiftId(String thisEmployeeShiftId) {
@@ -27,6 +29,16 @@ public abstract class EmployeePunchesModel {
         employeePunchType = thisEmployeePunchType;
     }
     
+    public static void setStartingDateOfWeek(Date thisStartingDateOfWeek) {
+        
+        startingDateOfWeek = thisStartingDateOfWeek;
+    }
+    
+    public static void setEndingDateOfWeek(Date thisEndingDateOfWeek) {
+        
+        endingDateOfWeek = thisEndingDateOfWeek;
+    }
+    
     //Accessors
     private static String getEmployeeShiftId() {
         
@@ -46,6 +58,16 @@ public abstract class EmployeePunchesModel {
     private static String getEmployeePunchType() {
         
         return employeePunchType;
+    }
+    
+    private static Date getStartingDateOfWeek() {
+        
+        return startingDateOfWeek;
+    }
+    
+    private static Date getEndingDateOfWeek() {
+        
+        return endingDateOfWeek;
     }
     
     private static String calculateAMOrPMHour(Integer hour) {
@@ -207,6 +229,7 @@ public abstract class EmployeePunchesModel {
         List<String> punchTime = new List<String>();
         List<String> punchType = new List<String>();
         List<String> employeeWeeklySchedule = new List<String>();
+        List<String> createdDate = new List<String>();
         
         Integer punchCount = 0;
         
@@ -215,7 +238,7 @@ public abstract class EmployeePunchesModel {
             if (Schema.SObjectType.EmployeePunch__c.isAccessible()) {
                 
                 for (EmployeePunch__c eachEmployeePunch: [SELECT Name, Date__c, Time__c, PunchType__c,
-                                                          EmployeeWeeklySchedule__c FROM EmployeePunch__c
+                                                          EmployeeWeeklySchedule__c, CreatedDate FROM EmployeePunch__c
                                                           ORDER BY CreatedDate ASC]) {
                          
                      punchName.add(eachEmployeePunch.Name);
@@ -225,6 +248,7 @@ public abstract class EmployeePunchesModel {
                                 ' ' + calculateAMOrPM(eachEmployeePunch.Time__c.hour()));
                      punchType.add(eachEmployeePunch.PunchType__c);
                      employeeWeeklySchedule.add(eachEmployeePunch.EmployeeWeeklySchedule__c);
+                     createdDate.add(String.valueOf(eachEmployeePunch.CreatedDate));
                      
                      punchCount++;
                 }
@@ -236,6 +260,7 @@ public abstract class EmployeePunchesModel {
                     punchTime.add('no punch');
                     punchType.add('no punch');
                     employeeWeeklySchedule.add('no punch');
+                    createdDate.add('no punch');
                 }
             }
         } catch (DMLException e) {
@@ -247,6 +272,7 @@ public abstract class EmployeePunchesModel {
             punchTime.add('fail');
             punchType.add('fail');
             employeeWeeklySchedule.add('fail');
+            createdDate.add('fail');
         }
         
         output.add(punchName);
@@ -254,6 +280,7 @@ public abstract class EmployeePunchesModel {
         output.add(punchTime);
         output.add(punchType);
         output.add(employeeWeeklySchedule);
+        output.add(createdDate);
         
         return output;
     }
@@ -358,4 +385,47 @@ public abstract class EmployeePunchesModel {
         
         return output;
     }
+    
+    public static List<List<String>> searchEmployeeWeeklyShifts() {
+        
+        List<List<String>> output = new List<List<String>>();
+        
+        List<String> shiftId = new List<String>();
+        List<String> shiftDate = new List<String>();
+        
+        Integer shiftCount = 0;
+        
+        try {
+           
+            if (Schema.SObjectType.EmployeeWeeklySchedule__c.isAccessible()) {
+                
+                for (EmployeeWeeklySchedule__c eachEmployeeWeeklySchedule: [SELECT Id, Date__c
+                     FROM EmployeeWeeklySchedule__c WHERE Date__c >= :getStartingDateOfWeek()
+                     AND Date__c <= :getEndingDateOfWeek() ORDER BY Date__c ASC]) {
+                    
+                     shiftId.add(eachEmployeeWeeklySchedule.Id);
+                     shiftDate.add(String.valueOf(eachEmployeeWeeklySchedule.Date__c));
+                     
+                     shiftCount++;
+                }
+                
+                if (shiftCount == 0) {
+                    
+                    shiftId.add('no shift');
+                    shiftDate.add('no shift');
+                }
+            }
+        } catch (DMLException e) {
+            
+            System.debug('An unexpected error has occurred: ' + e.getMessage());
+            
+            shiftId.add('fail');
+            shiftDate.add('fail');
+        }
+        
+        output.add(shiftId);
+        output.add(shiftDate);
+        
+        return output;
+    }    
 }
