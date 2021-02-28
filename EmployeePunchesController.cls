@@ -3,14 +3,19 @@ public with sharing class EmployeePunchesController extends EmployeePunchesModel
     //Variables
     public static List<List<String>> searchEmployeeShifts;
     public static List<List<String>> searchEmployeeAllPunches;
+    public static List<List<String>> searchEmployeeWeeklyShifts;
     public static List<List<String>> searchEmployeeShiftDates;
     public static Map<String, String> searchShiftDate = new Map<String, String>();
     public static List<List<String>> searchEmployeeLastPunch;
     public static List<List<String>> searchEmployeeLastPunchParticularShift;
+    public static List<DateTime> searchEmployeePunchesPerShift = new List<DateTime>();
     public static String employeeShiftId;
     public static Date employeeShiftDate;
     public static Time employeeShiftTime;
     public static String employeePunchType;
+    public static String currentWeekday;
+    public static Date startingDateOfWeek;
+    public static Date endingDateOfWeek;
     
     public static String formFeedback;
     
@@ -203,5 +208,209 @@ public with sharing class EmployeePunchesController extends EmployeePunchesModel
             
             System.debug('Sorry, but your punch was not added due to the following reasons: ' + e.getMessage());
         }
+    }
+    
+     private static void searchEmployeeCurrentWeekday() {
+        
+        Date myDate = System.today();
+        DateTime myDateTime = (DateTime) myDate + 1;
+        currentWeekday = myDateTime.format('EEEE');
+    }
+    
+    public static void calculateStartingDateOfWeek() {
+        
+        Date myDate;
+        Integer numberOfDaysSinceStartingDate = 0;
+        
+        switch on currentWeekday {
+            
+            when 'Sunday' {
+                
+               numberOfDaysSinceStartingDate = 0;
+            }
+            
+            when 'Monday' {
+                
+               numberOfDaysSinceStartingDate = 1;
+            }
+            
+            when 'Tuesday' {
+                
+               numberOfDaysSinceStartingDate = 2;
+            }
+            
+            when 'Wednesday' {
+                
+               numberOfDaysSinceStartingDate = 3;
+            }
+            
+            when 'Thursday' {
+                
+               numberOfDaysSinceStartingDate = 4;
+            }
+            
+            when 'Friday' {
+                
+               numberOfDaysSinceStartingDate = 5;
+            }
+            
+            //Saturday
+            when else {
+                
+               numberOfDaysSinceStartingDate = 6;
+            }
+        }
+        
+        startingDateOfWeek = System.today() - numberOfDaysSinceStartingDate;
+    }
+    
+    private static void calculateEndingDateOfWeek() {
+        
+        Date myDate;
+        Integer numberOfDaysUntilEndingDate = 0;
+        
+        switch on currentWeekday {
+            
+            when 'Sunday' {
+                
+               numberOfDaysUntilEndingDate = 6;
+            }
+            
+            when 'Monday' {
+                
+               numberOfDaysUntilEndingDate = 5;
+            }
+            
+            when 'Tuesday' {
+                
+               numberOfDaysUntilEndingDate = 4;
+            }
+            
+            when 'Wednesday' {
+                
+               numberOfDaysUntilEndingDate = 3;
+            }
+            
+            when 'Thursday' {
+                
+               numberOfDaysUntilEndingDate = 2;
+            }
+            
+            when 'Friday' {
+                
+               numberOfDaysUntilEndingDate = 1;
+            }
+            
+            //Saturday
+            when else {
+                
+               numberOfDaysUntilEndingDate = 0;
+            }
+        }
+        
+        endingDateOfWeek = System.today() + numberOfDaysUntilEndingDate;        
+    }
+    
+    public static Decimal calculateTotalHoursPerDate() {
+        
+        Decimal output = 0.0;
+        Decimal hours = 0.0;
+        Integer minutes = 0;
+        
+        for (Integer i = 0; i < searchEmployeePunchesPerShift.size(); i += 2) {
+            
+            minutes = Integer.valueOf((searchEmployeePunchesPerShift.get(i + 1).getTime() - searchEmployeePunchesPerShift.get(i).getTime()) / 1000 / 60);
+            hours = Decimal.valueOf(minutes).divide(60, 2);
+            
+            output += hours;
+            
+            minutes = 0;
+            hours = 0.0;
+        }
+        
+        return output;
+    }
+    
+    //Show a comprehensive summary of an employee's total hours worked.
+    //The calculation is based on a weekly schedule.
+    @AuraEnabled(cacheable=true)
+    public static String searchEmployeeShiftHistory() {
+        
+        String output = '';
+        Decimal totalHoursPerDate = 0;
+        
+        searchEmployeeCurrentWeekday();
+        calculateStartingDateOfWeek();
+        calculateEndingDateOfWeek();
+        
+        setStartingDateOfWeek(startingDateOfWeek);
+        setEndingDateOfWeek(endingDateOfWeek);
+        
+        searchEmployeeWeeklyShifts = searchEmployeeWeeklyShifts();
+        searchEmployeeAllPunches = searchEmployeeAllPunches();
+        
+        if (searchEmployeeWeeklyShifts.get(0).get(0) != 'no shift' && searchEmployeeWeeklyShifts.get(0).get(0) != 'fail') {
+            
+            if (searchEmployeeAllPunches.get(0).get(0) != 'fail') {
+                
+                output += '{"employee_weekly_shifts": ';
+                output += '[';
+                
+                if (searchEmployeeAllPunches.get(0).get(0) != 'no punch') {
+                    
+                    for (Integer i = 0; i < searchEmployeeWeeklyShifts.get(0).size(); i++) {
+                        
+                        if(math.mod(searchEmployeeAllPunches.get(0).size(), 2) == 0) {
+                            
+                            for (Integer j = 0; j < searchEmployeeAllPunches.get(0).size(); j++) {
+                                
+                                if (searchEmployeeWeeklyShifts.get(0).get(i) == searchEmployeeAllPunches.get(4).get(j)) {
+                                    
+                                    searchEmployeePunchesPerShift.add(DateTime.valueOf(searchEmployeeAllPunches.get(5).get(j)));
+                                }
+                            }
+                        } else {
+                            
+                            for (Integer j = 0; j < searchEmployeeAllPunches.get(0).size() - 1; j++) {
+                                
+                                if (searchEmployeeWeeklyShifts.get(0).get(i) == searchEmployeeAllPunches.get(4).get(j)) {
+                                    
+                                    searchEmployeePunchesPerShift.add(DateTime.valueOf(searchEmployeeAllPunches.get(5).get(j)));
+                                }
+                            }                            
+                        }
+                        
+                        totalHoursPerDate = calculateTotalHoursPerDate();
+                        
+                        output += '{"date": "' + searchEmployeeWeeklyShifts.get(1).get(i) + '", ' +
+                            '"number_of_hours": ' + totalHoursPerDate + '}, ';
+                        
+                        searchEmployeePunchesPerShift.clear();
+                        totalHoursPerDate = 0;
+                    }                    
+                } else {
+                    
+                    for (Integer i = 0; i < searchEmployeeWeeklyShifts.get(0).size(); i++) {
+                        
+                        output += '{"date": "' + searchEmployeeWeeklyShifts.get(1).get(i) + '", ' +
+                            '"number_of_hours": 0}, ';
+                    }
+                }
+                
+                output += '{}]';
+                
+                output = output.replaceAll(', \\{\\}', '');
+                
+                output += '}';
+            } else {
+                
+                output += 'no shifts this week';
+            }
+        } else {
+            
+            output += 'no shifts this week';
+        }
+        
+        return output;
     }
 }
