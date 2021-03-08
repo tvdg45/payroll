@@ -1,4 +1,4 @@
-public with sharing class EmployeePunchesController extends EmployeePunchesModel {
+public without sharing class EmployeePunchesController extends EmployeePunchesModel {
 
     //Variables
     public static List<List<String>> searchEmployeeShifts;
