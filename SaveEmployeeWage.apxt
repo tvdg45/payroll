@@ -1,0 +1,17 @@
+trigger SaveEmployeeWage on EmployeeWage__c (before insert, before update) {
+
+    if (Trigger.isBefore) {
+        
+        //Validate an employee wage before adding record.
+        if (Trigger.isInsert) {
+            
+            SaveEmployeeWage.saveEmployeeWage(Trigger.new);
+        }
+        
+        //Validate an employee wage before saving changes.
+        if (Trigger.isUpdate) {
+            
+            SaveEmployeeWage.saveEmployeeWage(Trigger.new);
+        }
+    }
+}
