@@ -1,0 +1,118 @@
+<apex:page docType="html-5.0" Controller="EmployeePaycheckController" title="Create paycheck">
+    <style>
+        body, input[type="button"], input[type="text"], select { font-size: 12pt; }
+        label:hover { cursor: text; }
+        input[type="text"], select { background: white; border: 2px solid; border-color: orange; }
+        input[type="button"] { background: #FF4500; color: white; padding: 4px 3px; font-weight: bold; border: 2px solid; border-color: #FF4500; border-radius: 3px; }
+        input[type="button"]:hover, input[type="button"]:focus { background: orange; color: white; padding: 4px 3px; font-weight: bold; border: 2px solid; border-color: orange; border-radius: 3px; cursor: pointer; }
+        input[type="button"]:disabled { cursor: not-allowed; padding: 4px 3px; font-weight: bold; border-radius: 3px; }
+    </style>
+    <script type="text/javascript" src="https://www.timothysdigitalsolutions.com/backstretch/js/jquery-3.2.1.js"></script>
+    <script type="text/javascript" src="https://www.timothysdigitalsolutions.com/backstretch/js/jquery.min.js"></script>
+    <script type="text/javascript" src="https://www.timothysdigitalsolutions.com/backstretch/js/jquery.backstretch.js"></script>
+    <div>
+        <input type="hidden" name="my_shifts" id="my_shifts" value="{!employeeShiftHistory}" />
+        <div id="shift_content"></div>
+    </div>
+    <script>
+        var shift_content = "";
+        var each_shift;
+        var my_shifts = "";
+        var all_shifts = 0;
+        var all_selected_shifts = "";
+        var number_of_selected_shifts = 0;
+        var paycheck_id = "";
+        var shift_id = "";
+        var taxes_withheld = "";
+		
+        my_shifts = document.getElementById("my_shifts").value;
+        
+        if (my_shifts != "no shift") {
+        
+          each_shift = JSON.parse(my_shifts);
+          
+          shift_content += "<div style='width: 100%; text-align: left; padding-bottom: 10px'>";
+          shift_content += "<label>Select paycheck: *</select><br />";
+          shift_content += "<select style='width: 97%; text-align: left' id='paycheck_id'>";
+          
+          for (var i = 0; i < each_shift["employee_paychecks"].length; i++) {
+          
+            shift_content += "<option value='" + each_shift["employee_paychecks"][i]["paycheck_id"] + "'>" + each_shift["employee_paychecks"][i]["paycheck_number"] + "</option>";
+          }
+          
+          shift_content += "</select>";
+          shift_content += "</div>";
+          shift_content += "<div style='width: 100%; text-align: left; padding-bottom: 10px'>";
+          shift_content += "<label>Taxes withheld: (Decimal or whole numbers only) *</select><br />";
+          shift_content += "<input style='width: 97%; text-align: left' type='text' class='taxes_withheld' />"
+          shift_content += "</div>";
+          shift_content += "<div style='width: 100%; text-align: left; padding-bottom: 10px'>";
+          shift_content += "<input type='button' class='create_paycheck' value='Create paycheck' onclick='create_paycheck()' />";
+          shift_content += "</div>";
+          shift_content += "<div style='width: 100%; text-align: left; padding-bottom: 20px'>";
+          shift_content += "<div id='create_paycheck_feedback'></div>";
+          shift_content += "</div>";
+          
+          for (var i = 0; i < each_shift["employee_weekly_shifts"].length; i++) {
+          
+            shift_content += "<div style='width: 100%; text-align: left; padding-bottom: 10px'>";
+            shift_content += "<div style='width: 100%; text-align: left'>";
+            shift_content += "<input type='checkbox' name='shift_id' class='shift_id' value='" + each_shift["employee_weekly_shifts"][i]["shift_id"] + "' />";
+            shift_content += "<label><b>Shift date:</b> " + each_shift["employee_weekly_shifts"][i]["date"] + "</label>";
+            shift_content += "</div>";
+            shift_content += "<div style='width: 100%; text-align: left'>";
+            shift_content += "<label><b>Hours:</b> " + each_shift["employee_weekly_shifts"][i]["number_of_hours"] + "</label>";
+            shift_content += "</div>";
+            shift_content += "</div>";
+          }
+       } else {
+       
+          shift_content += "<div>";
+          shift_content += "<label>There are no previously worked shifts.  Also, make sure that a paycheck is created first before assigning those shifts.</label>";
+          shift_content += "</div>";
+       }
+       
+       document.getElementById("shift_content").innerHTML = shift_content;
+       
+       function create_paycheck() {
+       
+          paycheck_id = $("#paycheck_id").val();
+          shift_id = $(".shift_id").val();
+          taxes_withheld = $(".taxes_withheld").val();
+          
+          all_shifts = document.getElementsByName('shift_id').length;
+          
+          for (var i = 0; i < all_shifts; i++) {
+          
+            if (document.getElementsByName('shift_id')[i].checked) {
+            
+              all_selected_shifts += document.getElementsByName('shift_id')[i].value + ",";
+              number_of_selected_shifts++;
+            }
+          }
+          
+          all_selected_shifts += "{}";
+          
+          if (number_of_selected_shifts > 0) {
+          
+            all_selected_shifts = all_selected_shifts.replace(/,{}/g, "");
+          } else {
+          
+            all_selected_shifts = all_selected_shifts.replace(/{}/g, "");
+          }
+          
+          createPaycheck(paycheck_id, all_selected_shifts, taxes_withheld);
+          
+          number_of_selected_shifts = 0;
+          all_selected_shifts = "";
+        }
+  	</script>
+    <apex:form >
+        <apex:actionFunction name="createPaycheck" action="{!controlCreatePaycheck}" reRender="formFeedback">
+            <apex:param id="paycheckId" name="paycheckId" value="" />
+            <apex:param id="shiftId" name="shiftId" value="" />
+            <apex:param id="taxesWithheld" name="taxesWithheld" value="" />
+        </apex:actionFunction>
+        <apex:outputText id="formFeedback" value="{!formFeedback}" escape="false"></apex:outputText>
+    </apex:form>
+</apex:page>
